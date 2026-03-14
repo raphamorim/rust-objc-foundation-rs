@@ -1,14 +1,13 @@
 [package]
 name = "objc-foundation"
-version = "0.1.1"
-authors = ["Steven Sheldon"]
-
+version = "0.2.0"
+authors = ["Steven Sheldon", "Raphael Amorim"]
 description = "Rust wrapper for Objective-C's Foundation framework."
 keywords = ["objective-c", "osx", "ios", "cocoa", "uikit"]
-repository = "http://github.com/SSheldon/rust-objc-foundation"
-documentation = "http://ssheldon.github.io/rust-objc/objc_foundation/"
+repository = "http://github.com/raphamorim/rust-objc-foundation-rs"
+documentation = "http://github.com/raphamorim/rust-objc-foundation-rs"
 license = "MIT"
-
+edition = "2024"
 exclude = [".gitignore"]
 
 [dependencies]

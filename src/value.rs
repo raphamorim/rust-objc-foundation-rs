@@ -1,27 +1,26 @@
 use std::any::Any;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
-use std::mem;
+use std::mem::MaybeUninit;
 use std::os::raw::{c_char, c_void};
 use std::str;
 
-use objc::{Encode, Encoding};
 use objc::runtime::Class;
+use objc::{Encode, Encoding};
 use objc_id::Id;
 
-use {INSCopying, INSObject};
+use crate::{INSCopying, INSObject};
 
-pub trait INSValue : INSObject {
+pub trait INSValue: INSObject {
     type Value: 'static + Copy + Encode;
 
     fn value(&self) -> Self::Value {
         assert!(Self::Value::encode() == self.encoding());
         unsafe {
-            let mut value = mem::uninitialized::<Self::Value>();
-            let value_ptr: *mut Self::Value = &mut value;
-            let bytes = value_ptr as *mut c_void;
+            let mut value = MaybeUninit::<Self::Value>::uninit();
+            let bytes = value.as_mut_ptr() as *mut c_void;
             let _: () = msg_send![self, getValue:bytes];
-            value
+            value.assume_init()
         }
     }
 
@@ -54,24 +53,33 @@ pub struct NSValue<T> {
 
 object_impl!(NSValue<T>);
 
-impl<T> INSObject for NSValue<T> where T: Any {
+impl<T> INSObject for NSValue<T>
+where
+    T: Any,
+{
     fn class() -> &'static Class {
         class!(NSValue)
     }
 }
 
-impl<T> INSValue for NSValue<T> where T: Any + Copy + Encode {
+impl<T> INSValue for NSValue<T>
+where
+    T: Any + Copy + Encode,
+{
     type Value = T;
 }
 
-impl<T> INSCopying for NSValue<T> where T: Any {
+impl<T> INSCopying for NSValue<T>
+where
+    T: Any,
+{
     type Output = NSValue<T>;
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::{INSValue, NSValue};
     use objc::Encode;
-    use {INSValue, NSValue};
 
     #[test]
     fn test_value() {

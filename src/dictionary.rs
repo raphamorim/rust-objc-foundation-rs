@@ -6,31 +6,31 @@ use std::ptr;
 use objc::runtime::Class;
 use objc_id::{Id, Owned, Ownership, ShareId};
 
-use {
-    INSFastEnumeration, INSCopying, INSObject,
-    NSArray, NSSharedArray, NSEnumerator,
-};
+use crate::{INSCopying, INSFastEnumeration, INSObject, NSArray, NSEnumerator, NSSharedArray};
 
 unsafe fn from_refs<D, T>(keys: &[&T], vals: &[&D::Value]) -> Id<D>
-        where D: INSDictionary, T: INSCopying<Output=D::Key> {
-    let cls = D::class();
-    let count = min(keys.len(), vals.len());
-    let obj: *mut D = msg_send![cls, alloc];
-    let obj: *mut D = msg_send![obj, initWithObjects:vals.as_ptr()
-                                             forKeys:keys.as_ptr()
-                                               count:count];
-    Id::from_retained_ptr(obj)
+where
+    D: INSDictionary,
+    T: INSCopying<Output = D::Key>,
+{
+    unsafe {
+        let cls = D::class();
+        let count = min(keys.len(), vals.len());
+        let obj: *mut D = msg_send![cls, alloc];
+        let obj: *mut D = msg_send![obj, initWithObjects:vals.as_ptr()
+                                                 forKeys:keys.as_ptr()
+                                                   count:count];
+        Id::from_retained_ptr(obj)
+    }
 }
 
-pub trait INSDictionary : INSObject {
+pub trait INSDictionary: INSObject {
     type Key: INSObject;
     type Value: INSObject;
     type Own: Ownership;
 
     fn count(&self) -> usize {
-        unsafe {
-            msg_send![self, count]
-        }
+        unsafe { msg_send![self, count] }
     }
 
     fn object_for(&self, key: &Self::Key) -> Option<&Self::Value> {
@@ -75,14 +75,14 @@ pub trait INSDictionary : INSObject {
         (keys, objs)
     }
 
-    fn key_enumerator(&self) -> NSEnumerator<Self::Key> {
+    fn key_enumerator(&self) -> NSEnumerator<'_, Self::Key> {
         unsafe {
             let result = msg_send![self, keyEnumerator];
             NSEnumerator::from_ptr(result)
         }
     }
 
-    fn object_enumerator(&self) -> NSEnumerator<Self::Value> {
+    fn object_enumerator(&self) -> NSEnumerator<'_, Self::Value> {
         unsafe {
             let result = msg_send![self, objectEnumerator];
             NSEnumerator::from_ptr(result)
@@ -96,13 +96,12 @@ pub trait INSDictionary : INSObject {
         }
     }
 
-    fn from_keys_and_objects<T>(keys: &[&T],
-            vals: Vec<Id<Self::Value, Self::Own>>) -> Id<Self>
-            where T: INSCopying<Output=Self::Key> {
+    fn from_keys_and_objects<T>(keys: &[&T], vals: Vec<Id<Self::Value, Self::Own>>) -> Id<Self>
+    where
+        T: INSCopying<Output = Self::Key>,
+    {
         let vals_refs: Vec<&Self::Value> = vals.iter().map(|obj| &**obj).collect();
-        unsafe {
-            from_refs(keys, &vals_refs)
-        }
+        unsafe { from_refs(keys, &vals_refs) }
     }
 
     fn into_values_array(dict: Id<Self>) -> Id<NSArray<Self::Value, Self::Own>> {
@@ -120,25 +119,39 @@ pub struct NSDictionary<K, V> {
 
 object_impl!(NSDictionary<K, V>);
 
-impl<K, V> INSObject for NSDictionary<K, V> where K: INSObject, V: INSObject {
+impl<K, V> INSObject for NSDictionary<K, V>
+where
+    K: INSObject,
+    V: INSObject,
+{
     fn class() -> &'static Class {
         class!(NSDictionary)
     }
 }
 
 impl<K, V> INSDictionary for NSDictionary<K, V>
-        where K: INSObject, V: INSObject {
+where
+    K: INSObject,
+    V: INSObject,
+{
     type Key = K;
     type Value = V;
     type Own = Owned;
 }
 
 impl<K, V> INSFastEnumeration for NSDictionary<K, V>
-        where K: INSObject, V: INSObject {
+where
+    K: INSObject,
+    V: INSObject,
+{
     type Item = K;
 }
 
-impl<'a, K, V> Index<&'a K> for NSDictionary<K, V> where K: INSObject, V: INSObject {
+impl<'a, K, V> Index<&'a K> for NSDictionary<K, V>
+where
+    K: INSObject,
+    V: INSObject,
+{
     type Output = V;
 
     fn index(&self, index: &K) -> &V {
@@ -148,9 +161,9 @@ impl<'a, K, V> Index<&'a K> for NSDictionary<K, V> where K: INSObject, V: INSObj
 
 #[cfg(test)]
 mod tests {
-    use objc_id::Id;
-    use {INSArray, INSObject, INSString, NSObject, NSString};
     use super::{INSDictionary, NSDictionary};
+    use crate::{INSArray, INSObject, INSString, NSObject, NSString};
+    use objc_id::Id;
 
     fn sample_dict(key: &str) -> Id<NSDictionary<NSString, NSObject>> {
         let string = NSString::from_str(key);
