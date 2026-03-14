@@ -1,4 +1,4 @@
-#![crate_name = "objc_foundation"]
+#![crate_name = "objc_foundation_rs"]
 #![crate_type = "lib"]
 #![allow(unexpected_cfgs)]
 
